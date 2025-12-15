@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Speaking AI Practice</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
+header { background: #4CAF50; color: white; padding: 1em; text-align: center; }
+nav { display: flex; justify-content: center; background: #333; }
+nav button { background: #333; color: white; border: none; padding: 1em; cursor: pointer; flex: 1; }
+nav button:hover { background: #555; }
+section { padding: 1em; display: none; }
+.active { display: block; }
+.card { background: white; padding: 1em; margin: 1em 0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+button.record, button.stop, button.play { margin: 0.2em; }
+</style>
+</head>
+<body>
+<header>
+<h1>Speaking AI Practice</h1>
+<p>Improve your English speaking skills (A1–B2)</p>
+</header>
+<nav>
+<button onclick="showSection('home')">Home</button>
+<button onclick="showSection('levelTest')">Speaking Test</button>
+<button onclick="showSection('idioms')">Idioms</button>
+<button onclick="showSection('chunks')">Chunky Words</button>
+<button onclick="showSection('dialogues')">Sample Dialogues</button>
+<button onclick="showSection('progress')">Progress & Tests</button>
+</nav>
+
+<!-- Sections -->
+<section id="home" class="active">
+<h2>Welcome</h2>
+<p>Today’s Speaking Goal: Record a short answer to improve fluency and vocabulary.</p>
+<button onclick="startSpeakingTask('Daily Question')">Start Speaking</button>
+</section>
+
+<section id="levelTest">
+<h2>Speaking Level Test</h2>
+<div id="levelTask" class="card">
+<p>Describe this picture or answer the question.</p>
+<button class="record" onclick="startRecording('level')">🎤 Record</button>
+<button class="stop" onclick="stopRecording('level')">⏹ Stop</button>
+<button class="play" onclick="playRecording('level')">▶ Play</button>
+<p id="levelScore">Mini-level: N/A</p>
+</div>
+</section>
+
+<section id="idioms">
+<h2>Idioms</h2>
+<div id="idiomsList"></div>
+<button onclick="idiomsChallenge()">Idioms Challenge (30 sec)</button>
+</section>
+
+<section id="chunks">
+<h2>Chunky Words</h2>
+<div id="chunksList"></div>
+<button onclick="monologueChunks()">Monologue: Use 5 Chunky Words</button>
+</section>
+
+<section id="dialogues">
+<h2>Sample Dialogues</h2>
+<div id="dialoguesList"></div>
+</section>
+
+<section id="progress">
+<h2>Progress & Mini-Tests</h2>
+<div id="progressStats"></div>
+<button onclick="miniTestIdioms()">Idioms Mini-Test</button>
+<button onclick="miniTestChunks()">Chunky Words Mini-Test</button>
+<p id="finalLevel">Overall Mini-Level: N/A</p>
+</section>
+
+<script>
+// Tab switching
+function showSection(id){
+  document.querySelectorAll('section').forEach(sec=>sec.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// Data
+const idioms = [
+  {phrase: 'Break the ice', meaning: 'start a conversation', example: 'I told a joke to break the ice.'},
+  {phrase: 'Hit the books', meaning: 'study hard', example: 'I need to hit the books for the exam.'},
+  // add 18 more idioms
+];
+const chunks = ['In my opinion','To be honest','It depends','As far as I know','On the other hand','At the end of the day','In other words','As a matter of fact','To be precise','In general'];
+const dialogues = [
+  {topic:'Cafe', questions:['What do you usually order?','How often do you go?','Describe your favorite cafe.','Do you prefer coffee or tea?']},
+  {topic:'Shop', questions:['What do you buy most often?','Do you like shopping online?','Describe a recent shopping experience.','What is your favorite store?']},
+  // add remaining 8 topics
+];
+
+// Populate idioms
+const idiomsList = document.getElementById('idiomsList');
+idioms.forEach(id=>{
+  const div = document.createElement('div');
+  div.className='card';
+  div.innerHTML=`<p><b>${id.phrase}</b> - ${id.meaning}</p><p>Example: ${id.example}</p>
+  <button class='record' onclick="startRecording('idiom')">🎤 Record</button>
+  <button class='stop' onclick="stopRecording('idiom')">⏹ Stop</button>
+  <button class='play' onclick="playRecording('idiom')">▶ Play</button>
+  <p>Mini-level: N/A</p>`;
+  idiomsList.appendChild(div);
+});
+
+// Populate chunks
+const chunksList = document.getElementById('chunksList');
+chunks.forEach(chunk=>{
+  const div = document.createElement('div');
+  div.className='card';
+  div.innerHTML=`<p>${chunk}</p>
+  <button class='record' onclick="startRecording('chunk')">🎤 Record</button>
+  <button class='stop' onclick="stopRecording('chunk')">⏹ Stop</button>
+  <button class='play' onclick="playRecording('chunk')">▶ Play</button>
+  <p>Mini-level: N/A</p>`;
+  chunksList.appendChild(div);
+});
+
+// Populate dialogues
+const dialoguesList = document.getElementById('dialoguesList');
+dialogues.forEach(d=>{
+  const div = document.createElement('div');
+  div.className='card';
+  let qHtml = d.questions.map((q,i)=><p>Q${i+1}: ${q}</p>).join('');
+  div.innerHTML=`<h3>${d.topic}</h3>${qHtml}
+  <button class='record' onclick="startRecording('dialogue')">🎤 Record</button>
+  <button class='stop' onclick="stopRecording('dialogue')">⏹ Stop</button>
+  <button class='play' onclick="playRecording('dialogue')">▶ Play</button>
+  <p>Mini-level: N/A</p>`;
+  dialoguesList.appendChild(div);
+});
+
+// Audio recording
+let mediaRecorder;
+let audioChunks = [];
+let currentSection='';
+
+async function startRecording(section){
+  currentSection = section;
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  mediaRecorder = new MediaRecorder(stream);
+  audioChunks=[];
+  mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+  mediaRecorder.start();
+}
+function stopRecording(section){
+  mediaRecorder.stop();
+  mediaRecorder.onstop = ()=>{
+    const audioBlob = new Blob(audioChunks);
+    const audioUrl = URL.createObjectURL(audioBlob);
+    const audio = new Audio(audioUrl);
+    audio.id='currentAudio';
+    // Simple AI imitation
+    const miniLevel = Math.random()>0.5?'A1':'B1';
+    const pList = document.querySelectorAll('section.active p');
+    pList.forEach(p=>{if(p.innerText.includes('Mini-level')) p.innerText=Mini-level: ${miniLevel}});
+  }
+}
+function playRecording(section){
+  const audio = document.getElementById('currentAudio');
+  if(audio) audio.play();
+}
+
+// Placeholder functions for challenges and mini-tests
+function idiomsChallenge(){ alert('Idioms Challenge: Record 2 idioms in 30 sec');}
+function monologueChunks(){ alert('Monologue: Use 5 Chunky Words in 1-1.5 min');}
+function miniTestIdioms(){ alert('Idioms Mini-Test: 5 questions');}
+function miniTestChunks(){ alert('Chunky Words Mini-Test: 3 questions');}
+function startSpeakingTask(task){ alert(task+' task started!');}
+</script>
+</body>
+</html>
